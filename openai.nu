@@ -24,12 +24,12 @@ def file-name [file: string] {
 # This uses the Responses API to submit a request to the OpenAI model of choice.
 # By default, it continues the conversation by including the last response.
 # You can directly provide instructions in a file, or let it implicitly look
-# up in prompt.instructions
+# up in prompt.instructions. First set $env.OPENAI_API_KEY
 export def ask [
     input?   # the prompt
     --debug  # inspect the request, don't submit
     --reparse # take existing .chat.json and parse the output
-    --model (-m) = "gpt-5"
+    --model (-m): string # set model (default is gpt-5) or use $env.OPENAI_MODEL
     --oneshot # do not use previous response - no conversation
     --file (-f): string # include a *text* file in the prompt
     --instructions (-i): string # your overall guiding prompt in a file
@@ -46,6 +46,7 @@ export def ask [
     } else {
         $inp
     }
+    let model = $model | default { $env.OPENAI_MODEL? } | default "gpt-5"
     let verbose = true
     let url = $URL
     let request = if ($request | is-empty) {
