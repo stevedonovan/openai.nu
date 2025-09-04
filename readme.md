@@ -3,19 +3,19 @@
 Just set `OPENAI_API_KEY` and `use <path>/openai.nu *`
 
 ```
-> help ask
+ help ask
 This uses the Responses API to submit a request to the OpenAI model of choice.
 By default, it continues the conversation by including the last response.
 You can directly provide instructions in a file, or let it implicitly look
-up in prompt.instruction
+up in prompt.instructions. First set $env.OPENAI_API_KEY
 
 Usage:
-  > ask {flags} (input)
+  > ask {flags} (input) 
 
 Flags:
   --debug: inspect the request, don't submit
   --reparse: take existing .chat.json and parse the output
-  -m, --model <string> (default: 'gpt-5')
+  -m, --model <string>: set model (default is gpt-5) or use $env.OPENAI_MODEL
   --oneshot: do not use previous response - no conversation
   -f, --file <string>: include a *text* file in the prompt
   -i, --instructions <string>: your overall guiding prompt in a file
@@ -26,9 +26,10 @@ Parameters:
   input <any>: the prompt (optional)
 
 Input/output types:
-   #   input   output
+   #   input   output 
   ────────────────────
-   0   any     any
+   0   any     any    
+
 ```
 
 Given these instructions (`prompt.instructions`):
@@ -41,16 +42,40 @@ without unnecessary explanation
 This is what it thinks of itself:
 
 ```nushell
-> ask 'Explain the ask command' -m gpt-4.1 -f openai.nu
-input 1248 cached 0
-output 61 reasoning 0
+> ask 'Explain the ask command, including what environment variables it depends on' -m gpt-4.1 -f openai.nu
+input 2319 cached 1152 
+output 86 reasoning 0 
 
-The `ask` command submits a prompt or query to OpenAI’s API (default model: "gpt-5"),
-manages conversation state with persistent `.chat.json`,
-allows including extra instructions or file contents,
-and lets you customize model/request parameters—
-returning the text output from the model.
+The `ask` command sends a text prompt to the OpenAI responses API,
+optionally using previous conversation context, instructions from a file,
+a specified model, or additional input from a text file, and it saves responses for future context.
+It depends on the environment variables `$env.OPENAI_API_KEY` (required) and
+optionally `$env.OPENAI_MODEL` (if not set, defaults to "gpt-5").
+/work/dev/openai.nu> ask 'Given this `ask` command, how can we make it into an interactive chat command?'
+input 2429 cached 0 
+output 40 reasoning 0 
+
+Wrap `ask` in a loop that repeatedly prompts the user for input, calls `ask` with that input, and prints the response, until the user enters "exit" or similar.
+/work/dev/openai.nu> ask 'Write this command'
+input 2478 cached 2176 
+output 91 reasoning 0 
+
+def chat [
+    --model(-m): string
+    --instructions(-i): string
+] {
+    print "Entering Chat (type 'exit' to quit):"
+    loop {
+        let user_input = (input "You: ")
+        if $user_input == "exit" { break }
+        let response = ask $user_input --model $model --instructions $instructions
+        print $"AI: ($response)"
+    }
+}
+
 ```
+
+(This works, BTW)
 
 By default, it continues the conversation by including the last response. The total
 response afterwards is always in `.chat.json`, so if you need to reset the conversation
@@ -67,7 +92,8 @@ ls *.md | each { |it| your-command $it.name }
 
 `gpt-4.1` (the best non-reasoning model) is much faster, but a bit stupid compared 
 to `gpt-5` which will think things through. But it can do pretty well, especially
-if we aren't asking complicated questions:
+if we aren't asking complicated questions. (I'm personally currently defaulting to
+`gpt-4.1` unless the problem requires harder thinking.)
 
 ```nushell
 > ask 'Give me a command to run a given command over all markdown files in a directory' -m gpt-4.1
